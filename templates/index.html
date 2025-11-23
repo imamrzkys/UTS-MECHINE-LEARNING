@@ -1,0 +1,819 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistem Deteksi Serangan Cyber - Random Forest</title>
+
+    <!-- Fonts & Icons -->
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="icon" type="image/png" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/svgs/solid/shield-halved.svg">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'Poppins', sans-serif;
+            background: linear-gradient(#EFF6FF, #DBEAFE);
+            min-height: 100vh;
+            color: #1E293B;
+        }
+
+        /* NAVBAR + HAMBURGER */
+        .navbar {
+            background: #1E3A8A;
+            color: #fff;
+            padding: 1rem 0;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+            position: sticky;
+            top: 0;
+            z-index: 50;
+        }
+
+        .nav-content {
+            max-width: 1200px;
+            margin: auto;
+            padding: 0 1.5rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 1.4rem;
+            font-weight: 700;
+        }
+
+        .logo i {
+            font-size: 1.6rem;
+            color: #93C5FD;
+        }
+
+        .nav-links {
+            display: flex;
+            gap: 1.5rem;
+        }
+
+        .nav-links a {
+            color: white;
+            text-decoration: none;
+            font-weight: 500;
+        }
+
+        /* MOBILE MENU */
+        .hamburger {
+            display: none;
+            font-size: 1.8rem;
+            cursor: pointer;
+            color: white;
+        }
+
+        @media (max-width: 768px) {
+            .nav-links {
+                display: none;
+                flex-direction: column;
+                background: #1E3A8A;
+                padding: 1rem;
+                position: absolute;
+                top: 70px;
+                right: 15px;
+                width: 200px;
+                border-radius: 10px;
+                box-shadow: 0 8px 25px rgba(0,0,0,0.3);
+                animation: fadeIn 0.3s ease;
+            }
+
+            .nav-links.show {
+                display: flex;
+            }
+
+            .hamburger {
+                display: block;
+            }
+        }
+
+        @keyframes fadeIn {
+            from {opacity: 0; transform: translateY(-10px);}
+            to {opacity: 1; transform: translateY(0);}
+        }
+
+        /* HERO SECTION */
+        .hero {
+            max-width: 1100px;
+            margin: 2rem auto;
+            padding: 2rem;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 8px 30px rgba(0,0,0,0.12);
+            text-align: center;
+        }
+
+        .hero h1 {
+            font-size: 2rem;
+            color: #1E3A8A;
+            font-weight: 700;
+        }
+
+        .hero p {
+            margin-top: 1rem;
+            font-size: 1rem;
+            color: #475569;
+            line-height: 1.7;
+        }
+
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px,1fr));
+            gap: 1rem;
+            margin-top: 2rem;
+        }
+
+        .stat-card {
+            padding: 1rem;
+            background: #F8FAFC;
+            border-radius: 15px;
+            border: 2px solid #BFDBFE;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.07);
+            text-align: center;
+            transition: 0.3s;
+        }
+
+        .stat-card:hover { transform: translateY(-5px); }
+
+        .stat-card i {
+            font-size: 2rem;
+            margin-bottom: 0.5rem;
+            color: #2563EB;
+        }
+    </style>
+
+</head>
+
+<body>
+
+    <!-- NAVBAR -->
+    <nav class="navbar">
+        <div class="nav-content">
+
+            <div class="logo">
+                <i class="fas fa-shield-halved"></i>
+                Cyber Attack Detection
+            </div>
+
+            <div class="hamburger" onclick="toggleMenu()">
+                <i class="fas fa-bars"></i>
+            </div>
+
+            <ul class="nav-links" id="mobileMenu">
+                <li><a href="#home">Beranda</a></li>
+                <li><a href="#predict">Prediksi</a></li>
+                <li><a href="#visualizations">Visualisasi</a></li>
+                <li><a href="#about">Tentang</a></li>
+            </ul>
+
+        </div>
+    </nav>
+
+    <script>
+        function toggleMenu() {
+            document.getElementById('mobileMenu').classList.toggle('show');
+        }
+    </script>
+
+    <!-- HERO -->
+    <section id="home">
+        <div class="hero">
+            <h1>Sistem Deteksi Serangan Cyber</h1>
+            <p>
+                Masukkan data traffic jaringan untuk mendeteksi apakah koneksi tergolong 
+                <strong>normal</strong> atau mengandung indikasi 
+                <strong>serangan siber</strong>. Sistem ini memanfaatkan algoritma 
+                <strong>Random Forest</strong> yang memiliki akurasi sangat tinggi.
+            </p>
+
+            <div class="stats">
+                <div class="stat-card">
+                    <i class="fas fa-bolt"></i>
+                    <h3>{{ "%.2f"|format(metadata.train_accuracy * 100) }}%</h3>
+                    <p>Akurasi Training</p>
+                </div>
+
+                <div class="stat-card">
+                    <i class="fas fa-chart-line"></i>
+                    <h3>{{ "%.2f"|format(metadata.test_accuracy * 100) }}%</h3>
+                    <p>Akurasi Testing</p>
+                </div>
+
+                <div class="stat-card">
+                    <i class="fas fa-brain"></i>
+                    <h3>Random Forest</h3>
+                    <p>Algoritma</p>
+                </div>
+
+                <div class="stat-card">
+                    <i class="fas fa-database"></i>
+                    <h3>{{ feature_names|length }}</h3>
+                    <p>Jumlah Fitur</p>
+                </div>
+            </div>
+        </div>
+    </section>
+<!-- ====================================== -->
+<!--        FORM PREDIKSI CYBER ATTACK      -->
+<!-- ====================================== -->
+
+<section id="predict">
+    <div class="container" style="max-width: 1100px; margin: auto;">
+
+        <h2 class="section-title" 
+            style="
+                text-align:center; 
+                color:#1E3A8A; 
+                margin: 2rem 0 1rem 0;
+                font-size:2rem;
+                font-weight:700;">
+            Formulir Prediksi Serangan Cyber
+        </h2>
+
+        <div class="prediction-form"
+            style="
+                background:white;
+                padding:2rem;
+                border-radius:20px;
+                box-shadow:0 8px 20px rgba(0,0,0,0.12);
+                margin-bottom:2rem;
+            ">
+
+            <!-- SAMPLE AUTO-FILL BUTTON -->
+            <div style="text-align:center; margin-bottom:1rem;">
+                <p style="font-weight:600; color:#1E3A8A; margin-bottom:1rem;">
+                    <i class="fas fa-magic"></i> Contoh Otomatis (Auto-Fill)
+                </p>
+
+                <button type="button"
+        onclick="fillExample('normal_example')"
+        style="
+            background:#2563EB;
+            color:white;
+            border:none;
+            padding:0.7rem 1.5rem;
+            border-radius:12px;
+            cursor:pointer;
+            font-weight:600;
+            margin-right: 1rem;
+            box-shadow:0 4px 15px rgba(37,99,235,0.4);
+        ">
+    Contoh Normal
+</button>
+<button type="button"
+        onclick="fillExample('attack_example')"
+        style="
+            background:#DC2626;
+            color:white;
+            border:none;
+            padding:0.7rem 1.5rem;
+            border-radius:12px;
+            cursor:pointer;
+            font-weight:600;
+            box-shadow:0 4px 15px rgba(220,38,38,0.3);
+        ">
+    Contoh Attack
+</button>
+            </div>
+
+
+            <form id="predictionForm">
+
+                <div class="form-grid" 
+                    style="
+                        display:grid;
+                        grid-template-columns:repeat(auto-fit,minmax(260px,1fr));
+                        gap:1.5rem;
+                    ">
+
+                    <!-- PROTOCOL -->
+                    <div class="form-group">
+                        <label>Protocol (proto)</label>
+                        <select name="proto" required>
+                            <option value="">-- Pilih --</option>
+                            <option value="tcp">TCP</option>
+                            <option value="udp">UDP</option>
+                            <option value="icmp">ICMP</option>
+                        </select>
+                    </div>
+
+                    <!-- SERVICE -->
+                    <div class="form-group">
+                        <label>Service</label>
+                        <input type="text" name="service" required placeholder="Contoh: -, http, dns">
+                    </div>
+
+                    <!-- CONNECTION STATE -->
+                    <div class="form-group">
+                        <label>Connection State</label>
+                        <input type="text" name="conn_state" required placeholder="Contoh: OTH, REJ, S0">
+                    </div>
+
+                    <!-- HTTP METHOD -->
+                    <div class="form-group">
+                        <label>HTTP Method</label>
+                        <select name="http_method">
+                            <option value="">Tidak Ada</option>
+                            <option value="GET">GET</option>
+                            <option value="POST">POST</option>
+                            <option value="HEAD">HEAD</option>
+                            <option value="PUT">PUT</option>
+                        </select>
+                    </div>
+
+                    <!-- NUMERIC INPUTS (NOW SAFE AS TEXT) -->
+                    <div class="form-group">
+                        <label>Duration</label>
+                        <input type="text" name="duration" inputmode="decimal"
+                               pattern="[0-9]*[.,]?[0-9]+" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Source Bytes</label>
+                        <input type="text" name="src_bytes" inputmode="numeric" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Destination Bytes</label>
+                        <input type="text" name="dst_bytes" inputmode="numeric" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Missed Bytes</label>
+                        <input type="text" name="missed_bytes" inputmode="numeric" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Source Packets</label>
+                        <input type="text" name="src_pkts" inputmode="numeric" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Source IP Bytes</label>
+                        <input type="text" name="src_ip_bytes" inputmode="numeric" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Destination Packets</label>
+                        <input type="text" name="dst_pkts" inputmode="numeric" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Destination IP Bytes</label>
+                        <input type="text" name="dst_ip_bytes" inputmode="numeric" required>
+                    </div>
+
+                </div>
+
+                <div style="text-align:center; margin-top:2rem;">
+                    <button type="submit"
+                        style="
+                            background:#2563EB;
+                            color:white;
+                            padding:1rem 2.5rem;
+                            border:none;
+                            border-radius:12px;
+                            font-size:1rem;
+                            font-weight:600;
+                            cursor:pointer;
+                            box-shadow:0 4px 15px rgba(37,99,235,0.4);
+                        ">
+                        <i class="fas fa-shield-virus"></i> Prediksi
+                    </button>
+                </div>
+
+            </form>
+
+        </div>
+    </div>
+</section>
+
+<script>
+    const EXAMPLES = {{ examples | tojson }};
+
+    function fillExample(key) {
+        const sample = EXAMPLES[key];
+        if (!sample) {
+            alert("Contoh input tidak ditemukan.");
+            return;
+        }
+
+        Object.keys(sample).forEach(k => {
+            const field = document.querySelector(`[name="${k}"]`);
+            if (field) {
+                field.value = sample[k];
+            }
+        });
+
+        window.scrollTo({ top: document.querySelector("#predict").offsetTop, behavior: "smooth" });
+    }
+</script>
+<!-- =============================== -->
+<!-- AJAX PREDICTION HANDLER -->
+<!-- =============================== -->
+
+<script>
+window.addEventListener('DOMContentLoaded', function() {
+    const form = document.getElementById('predictionForm');
+
+    form.addEventListener('submit', function(e) {
+        e.preventDefault();
+
+        // Convert FormData → JSON
+        const formData = new FormData(form);
+        const data = {};
+        formData.forEach((v, k) => {
+            data[k] = v;
+        });
+
+        console.log("Mengirim data:", data);
+
+        fetch("/predict", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(data)
+        })
+        .then(res => res.json())
+        .then(result => {
+            console.log("Hasil prediksi:", result);
+
+            if (result.success) {
+                displayResult(result);
+            } else {
+                alert("❌ Terjadi kesalahan: " + result.error);
+            }
+        })
+        .catch(err => {
+            console.error("Gagal:", err);
+            alert("Tidak dapat menghubungi server!");
+        });
+    });
+});
+</script>
+
+<!-- =============================== -->
+<!--        RESULT PREDICTION        -->
+<!-- =============================== -->
+
+<section id="resultSection">
+    <div class="container" style="max-width:1100px; margin:auto;">
+        <div id="resultCard"
+            style="
+                display:none;
+                background:white;
+                padding:2rem;
+                border-radius:20px;
+                box-shadow:0 8px 25px rgba(0,0,0,0.15);
+                margin-top:2rem;
+            ">
+
+            <!-- HEADER -->
+            <div style="text-align:center;">
+
+                <!-- BADGE -->
+                <div id="resultBadge"
+                    style="
+                        padding:1rem 2.5rem;
+                        font-size:1.7rem;
+                        font-weight:700;
+                        border-radius:50px;
+                        color:white;
+                        width:fit-content;
+                        margin:auto;
+                        margin-bottom:1rem;
+                        box-shadow:0 6px 15px rgba(0,0,0,0.2);
+                    ">
+                </div>
+
+                <!-- TEXT -->
+                <h3 id="resultText"
+                    style="
+                        color:#1E293B;
+                        margin-bottom:1rem;
+                        font-size:1.3rem;
+                    ">
+                </h3>
+
+                <!-- CONFIDENCE BAR -->
+                <div style="
+                    background:#E2E8F0;
+                    height:40px;
+                    width:100%;
+                    border-radius:20px;
+                    overflow:hidden;
+                    margin:1.5rem auto;
+                    box-shadow:inset 0 2px 8px rgba(0,0,0,0.15);
+                ">
+                    <div id="confidenceFill"
+                        style="
+                            height:100%;
+                            background:#2563EB;
+                            width:0%;
+                            display:flex;
+                            align-items:center;
+                            justify-content:center;
+                            color:white;
+                            font-weight:700;
+                            font-size:1rem;
+                            transition:width 1.4s ease;
+                        ">
+                    </div>
+                </div>
+            </div>
+
+            <!-- PROBABILITY CARDS -->
+            <div id="probabilitiesDiv"></div>
+
+        </div>
+    </div>
+</section>
+
+<script>
+function displayResult(result) {
+
+    const resultCard = document.getElementById('resultCard');
+    const badge = document.getElementById('resultBadge');
+    const text = document.getElementById('resultText');
+    const fill = document.getElementById('confidenceFill');
+    const probDiv = document.getElementById('probabilitiesDiv');
+
+    let pred = (result.prediction || "").toLowerCase();
+    const isAttack = pred === "attack" || pred === "1";
+
+    // Badge styling
+    if (isAttack) {
+        badge.style.background = "#DC2626";  // merah
+        badge.textContent = "ATTACK";
+    } else {
+        badge.style.background = "#2563EB";  // biru
+        badge.textContent = "NORMAL";
+    }
+
+    // Text
+    text.textContent = "Tingkat Kepercayaan: " + result.confidence + "%";
+
+        // Progress bar
+    fill.style.width = result.confidence + "%";
+    fill.textContent = result.confidence + "%";
+    if (isAttack) {
+        fill.style.background = "#DC2626";
+    } else {
+        fill.style.background = "#2563EB";
+    }
+
+    // Probability cards
+    probDiv.innerHTML = `
+        <h3 style="text-align:center; margin-top:2rem; color:#1E3A8A;">
+            📊 Probabilitas Kelas
+        </h3>
+
+        <div style="
+            display:grid;
+            grid-template-columns:repeat(auto-fit,minmax(250px,1fr));
+            gap:1rem;
+            margin-top:1rem;">
+            
+            <div style="
+                background:#FDE2E2;
+                padding:1rem;
+                border-radius:15px;
+                text-align:center;
+                border:2px solid #FCA5A5;">
+                <h3 style="font-size:1.7rem; color:#DC2626;">
+                    ${result.probability_attack}%
+                </h3>
+                <p style="font-weight:600; color:#B91C1C;">
+                    Serangan (Attack)
+                </p>
+            </div>
+
+            <div style="
+                background:#DBEAFE;
+                padding:1rem;
+                border-radius:15px;
+                text-align:center;
+                border:2px solid #93C5FD;">
+                <h3 style="font-size:1.7rem; color:#1E3A8A;">
+                    ${result.probability_normal}%
+                </h3>
+                <p style="font-weight:600; color:#2563EB;">
+                    Normal
+                </p>
+            </div>
+
+        </div>
+    `;
+
+    resultCard.style.display = "block";
+    resultCard.scrollIntoView({ behavior: "smooth" });
+}
+</script>
+<!-- ====================================== -->
+<!--          VISUALISASI GRAFIK            -->
+<!-- ====================================== -->
+
+<section id="visualizations">
+    <div class="container" style="max-width:1100px; margin:auto;">
+
+        <h2 class="section-title"
+            style="
+                text-align:center;
+                color:#1E3A8A;
+                margin-top:3rem;
+                margin-bottom:1.5rem;
+                font-size:2rem;
+                font-weight:700;
+            ">
+            Visualisasi Data & Performa Model
+        </h2>
+
+        <div class="visualizations"
+            style="
+                display:grid;
+                grid-template-columns:repeat(auto-fit,minmax(280px,1fr));
+                gap:1.5rem;
+                padding-bottom:2rem;
+            ">
+
+            {% for image in images %}
+            <div class="viz-card"
+                style="
+                    background:white;
+                    padding:1rem;
+                    border-radius:16px;
+                    box-shadow:0 6px 18px rgba(0,0,0,0.12);
+                    border:2px solid #DBEAFE;
+                ">
+                
+                <h3 style="
+                    text-align:center;
+                    margin-bottom:0.8rem;
+                    color:#1E3A8A;
+                    font-size:1rem;
+                    font-weight:600;
+                ">
+                    {{ image_titles.get(image, image.replace('.png','')) }}
+                </h3>
+
+                <img 
+                    src="{{ url_for('static', filename=image) }}" 
+                    alt="visualization"
+                    onclick="openModal(this.src)"
+                    style="
+                        width:100%;
+                        border-radius:10px;
+                        cursor:pointer;
+                        transition:0.3s;
+                    "
+                    onmouseover="this.style.transform='scale(1.03)'"
+                    onmouseout="this.style.transform='scale(1)'"
+                >
+            </div>
+            {% endfor %}
+
+        </div>
+
+    </div>
+</section>
+
+<!-- MODAL UNTUK PERBESAR GAMBAR -->
+<div id="imageModal"
+    style="
+        display:none;
+        position:fixed;
+        width:100%;
+        height:100%;
+        top:0; left:0;
+        background:rgba(0,0,0,0.85);
+        backdrop-filter:blur(3px);
+        justify-content:center;
+        align-items:center;
+        z-index:5000;
+    "
+    onclick="closeModal()">
+
+    <span style="
+        position:absolute;
+        top:20px;
+        right:30px;
+        font-size:2.2rem;
+        color:white;
+        cursor:pointer;
+    ">&times;</span>
+
+    <img id="modalImage"
+        style="
+            max-width:90%;
+            max-height:90%;
+            border-radius:15px;
+            box-shadow:0 8px 25px rgba(0,0,0,0.4);
+        ">
+</div>
+
+<script>
+    function openModal(src) {
+        const modal = document.getElementById("imageModal");
+        document.getElementById("modalImage").src = src;
+        modal.style.display = "flex";
+    }
+
+    function closeModal() {
+        document.getElementById("imageModal").style.display = "none";
+    }
+</script>
+<!-- ====================================== -->
+<!--              ABOUT SECTION             -->
+<!-- ====================================== -->
+
+<section id="about">
+    <div class="container" style="max-width:1100px; margin:auto;">
+
+        <h2 class="section-title"
+            style="
+                text-align:center;
+                color:#1E3A8A;
+                margin-top:3rem;
+                margin-bottom:1rem;
+                font-size:2rem;
+                font-weight:700;
+            ">
+            Tentang Sistem Ini
+        </h2>
+
+        <div style="
+            background:white;
+            padding:2rem;
+            border-radius:20px;
+            box-shadow:0 8px 20px rgba(0,0,0,0.12);
+            font-size:1rem;
+            line-height:1.8;
+            color:#334155;
+        ">
+            <p style="text-align:center;">
+                Sistem ini menggunakan algoritma 
+                <strong style="color:#2563EB;">Random Forest</strong> untuk mendeteksi
+                apakah sebuah traffic jaringan tergolong <strong>Normal</strong> atau 
+                <strong>Attack</strong>.
+            </p>
+
+            <p style="text-align:center; margin-top:1rem;">
+                Model dilatih menggunakan dataset 
+                <strong>TON_IoT Cyber Attack Dataset</strong> dengan tahapan lengkap:
+            </p>
+
+            <ul style="margin-top:1rem; color:#1E293B; line-height:1.9;">
+                <li>✓ Data Cleaning</li>
+                <li>✓ Encoding Kategori</li>
+                <li>✓ SMOTE untuk menangani imbalance</li>
+                <li>✓ Normalisasi dan Standarisasi Numerik</li>
+                <li>✓ Hyperparameter Tuning</li>
+                <li>✓ Pipeline otomatis untuk prediksi realtime</li>
+            </ul>
+
+            <div style="
+                margin-top:2rem; 
+                background:#EFF6FF; 
+                border-left:6px solid #2563EB; 
+                padding:1.5rem; 
+                border-radius:12px;
+            ">
+                <p><strong>Informasi Model:</strong></p>
+                <p>• Algoritma: Random Forest Classifier</p>
+                <p>• Train Accuracy: {{ "%.2f"|format(metadata.train_accuracy * 100) }}%</p>
+                <p>• Test Accuracy: {{ "%.2f"|format(metadata.test_accuracy * 100) }}%</p>
+                <p>• Total Fitur Input: {{ feature_names|length }}</p>
+            </div>
+
+        </div>
+    </div>
+</section>
+
+<!-- ====================================== -->
+<!--                FOOTER                  -->
+<!-- ====================================== -->
+
+<footer style="
+    background:#1E3A8A;
+    color:white;
+    margin-top:3rem;
+    padding:2rem 0;
+    text-align:center;
+">
+    <p style="font-size:1rem;">
+        &copy; 2025 Sistem Deteksi Serangan Cyber • Dibuat oleh 
+        <strong style="color:#93C5FD;">Imam Rizki Syahputra</strong>
+    </p>
+
+    <p style="font-size:0.9rem; color:#BFDBFE; margin-top:0.5rem;">
+        Machine Learning • UTS Semester 5
+    </p>
+</footer>
